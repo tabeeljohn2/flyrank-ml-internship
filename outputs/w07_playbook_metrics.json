@@ -1,0 +1,69 @@
+{
+  "rows": 20249,
+  "clients": 30,
+  "decline_base_rate": 0.521,
+  "oof_auc_logistic_grouped_5fold": 0.611,
+  "week6_grouped_auc_mean_10_splits": {
+    "rule": 0.42,
+    "logistic": 0.583,
+    "random_forest": 0.585
+  },
+  "action_counts": {
+    "MONITOR": 7893,
+    "NO_ACTION": 5061,
+    "REVIEW_CONTENT_GAPS": 3258,
+    "REVIEW_FOR_REFRESH": 2622,
+    "REVIEW_TITLE_SNIPPET": 1415
+  },
+  "reason_code_counts": {
+    "STABLE": 7893,
+    "LOW_VISIBILITY": 5061,
+    "STRIKING_DISTANCE": 3258,
+    "HIGH_DECLINE_RISK": 2622,
+    "LOW_CTR_FOR_POSITION": 1415
+  },
+  "feature_missing_rates": {
+    "days_since_last_update": 0.0,
+    "content_age_days": 0.0,
+    "word_count": 0.295,
+    "search_volume": 0.023,
+    "competition": 0.023,
+    "cpc": 0.023,
+    "content_type": 0.0,
+    "main_intent": 0.021
+  },
+  "cost_table": [
+    {
+      "weekly_capacity_N": 50,
+      "decline_rate_top_N": 0.54,
+      "eligible_base_rate": 0.538,
+      "editor_hours_ASSUMED_2h_per_page": 100,
+      "impressions_lost_last30d_in_picks": 17378
+    },
+    {
+      "weekly_capacity_N": 100,
+      "decline_rate_top_N": 0.66,
+      "eligible_base_rate": 0.538,
+      "editor_hours_ASSUMED_2h_per_page": 200,
+      "impressions_lost_last30d_in_picks": 66241
+    },
+    {
+      "weekly_capacity_N": 200,
+      "decline_rate_top_N": 0.665,
+      "eligible_base_rate": 0.538,
+      "editor_hours_ASSUMED_2h_per_page": 400,
+      "impressions_lost_last30d_in_picks": 150499
+    },
+    {
+      "weekly_capacity_N": 500,
+      "decline_rate_top_N": 0.574,
+      "eligible_base_rate": 0.538,
+      "editor_hours_ASSUMED_2h_per_page": 1000,
+      "impressions_lost_last30d_in_picks": 421970
+    }
+  ],
+  "assumptions": {
+    "editor_hours_per_page": 2,
+    "decline_threshold": 0.7
+  }
+}
