@@ -1,137 +1,88 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ranking Content Refresh Candidates: A Grouped-Validation Baseline</title>
-<meta name="description" content="A research prototype that ranks pages for human editorial review using search-performance data, with honest limits.">
-<style>
-:root{--bg:#fbfaf7;--fg:#1f2328;--muted:#5b636d;--line:#dcd8cf;--accent:#1f5fbf;--bar:#1f5fbf;--bar2:#9aa5b4;--card:#f1eee7}
-@media (prefers-color-scheme:dark){:root{--bg:#16181c;--fg:#e8e6e1;--muted:#a3a9b1;--line:#34383f;--accent:#7aa7ff;--bar:#7aa7ff;--bar2:#6b7482;--card:#1f2228}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.65 Georgia,"Times New Roman",serif}
-main{max-width:720px;margin:0 auto;padding:48px 20px 80px}
-h1{font-size:2rem;line-height:1.2;margin:0 0 8px}
-h2{font-size:1.3rem;margin:2.4rem 0 .6rem;border-top:1px solid var(--line);padding-top:1.2rem}
-.meta{color:var(--muted);font-size:.95rem;margin-bottom:1.5rem}
-.abstract{background:var(--card);border-left:4px solid var(--accent);padding:14px 18px;border-radius:4px}
-.abstract h2{border:0;margin:0 0 6px;padding:0;font-size:1.05rem;text-transform:uppercase;letter-spacing:.06em}
-a{color:var(--accent)}
-.wrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font:15px/1.4 system-ui,sans-serif;margin:.8rem 0}
-th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
-th{background:var(--card)}
-figure{margin:1.2rem 0}
-figcaption{font:14px/1.4 system-ui,sans-serif;color:var(--muted)}
-svg{width:100%;height:auto;max-width:460px}
-svg text{fill:var(--fg);font:12px system-ui,sans-serif}
-.row{display:flex;align-items:center;gap:10px;font:14px system-ui,sans-serif;margin:6px 0}
-.row span:first-child{width:210px;flex:none}
-.bar{height:16px;background:var(--bar);border-radius:2px}
-.row b{font-weight:600}
-.fill{background:#ffe9a8;color:#3a2f00;padding:0 4px;border-radius:3px}
-footer{margin-top:3rem;color:var(--muted);font-size:.95rem}
-</style>
-</head>
-<body>
-<main>
-<h1>Ranking Content Refresh Candidates: A Grouped-Validation Baseline</h1>
-<div class="meta">TABEEL JOHN · FlyRank ML Internship · Research prototype, Week 7</div>
+Ranking Content Refresh Candidates: A Grouped-Validation Baseline
+TABEEL JOHN · FlyRank ML Internship · Research prototype, Week 7
+Abstract
+FlyRank's content editors cannot review every page, so which pages should they look at first when search impressions start to fall? I asked whether search-performance signals can rank pages by their risk of a large impression drop. I used an anonymized FlyRank slice of 20,249 pages from 30 clients, and defined "declined" as the last 30 days falling below 70% of the previous 30 days. A logistic regression, validated by holding out whole clients, reached a mean AUC of 0.583 against 0.420 for a rule-based baseline, so it is directionally better but weak and unstable, and the signal appears to rest mostly on content age. I turn the scores into a ranked reading list with reason codes for a human editor, and I claim nothing about whether a refresh would help.
 
-<div class="abstract">
-<h2>Abstract</h2>
-<p>Editors have limited time, so which pages should they look at first? I asked whether search-performance signals can rank pages by their risk of a large impression drop. I used an anonymized FlyRank slice of 20,249 pages from 30 clients, and defined "declined" as the last 30 days falling below 70% of the previous 30 days. A logistic regression, validated by holding out whole clients, reached a mean AUC of 0.583 against 0.420 for a rule-based baseline, so it is directionally better but weak and unstable, and the signal appears to rest mostly on content age. I turn the scores into a ranked reading list with reason codes for a human editor, and I claim nothing about whether a refresh would help.</p>
-</div>
+1. Introduction
+The FlyRank content problem. FlyRank works with search content across many clients, and pages that once earned search impressions can lose them over time. A content team cannot review every page every week, so the practical question is which pages an editor should read first. This paper is a case study of that problem on anonymized FlyRank data: a "refresh queue" that points an editor to pages whose impressions have dropped or look likely to, with the reasons stated in plain words.
 
-<h2>1. Introduction</h2>
-<p>A content team cannot review every page every week. A ranked queue could help an editor decide where to read first. This paper asks a narrow question: using only observed search metrics and page attributes, can we rank pages by the chance their impressions fall sharply, and is that ranking better than a simple rule? The output is decision support for a human, not an automated action.</p>
+A ranked queue could help an editor decide where to read first. This paper asks a narrow question: using only observed search metrics and page attributes, can we rank pages by the chance their impressions fall sharply, and is that ranking better than a simple rule? The output is decision support for a human, not an automated action.
 
-<h2>2. Data</h2>
-<p>The data is the anonymized starter slice of the FlyRank ML Internship release (<code>content_refresh_anonymized.csv</code>): one row per page, 30,000 rows and 44 columns, covering 32 pseudonymized clients. Search metrics come from Google Search Console and traffic metrics from GA4. Metrics are aggregated over a trailing 90-day window ending at export time. The trend label uses the most recent 30 days against the 30 days before that (days 31 to 60 back). The data dictionary gives no calendar dates, so none are shown here. This paper does not use the full multi-million-row warehouse release.</p>
-<ul>
-<li><b>Exclusion:</b> pages with fewer than 50 impressions in the previous 30 days were dropped, because a ratio on a tiny base is noisy.</li>
-<li><b>Result:</b> 20,249 pages from 30 clients. The observed decline rate is 0.521.</li>
-<li><b>Public safety:</b> clients and pages appear only as anonymized IDs, and none are shown here.</li>
-</ul>
+2. Data
+The data is the anonymized starter slice of the FlyRank ML Internship release (content_refresh_anonymized.csv): one row per page, 30,000 rows and 44 columns, covering 32 pseudonymized clients. Search metrics come from Google Search Console and traffic metrics from GA4. Metrics are aggregated over a trailing 90-day window ending at export time. The trend label uses the most recent 30 days against the 30 days before that (days 31 to 60 back). The data dictionary gives no calendar dates, so none are shown here. This paper does not use the full multi-million-row warehouse release.
 
-<h2>3. Methodology</h2>
-<p><b>Label.</b> <code>declined = 1</code> when <code>impressions_last_30d / impressions_prev_30d &lt; 0.7</code>. This is an observed drop over one window, not the effect of any action.</p>
-<p><b>Features.</b> Numeric: days since last update, content age (days), word count, search volume, competition, CPC (median-imputed, standardized). Categorical: content type, main intent (most-frequent imputation, one-hot). Word count is missing for 29.5% of pages. Left out on purpose: the trend fields (<code>trend_pct</code>, <code>trend_direction</code>), because the label comes from them, and <code>client_id</code>, which is used only for grouping, never as a feature.</p>
-<p><b>Models.</b> Logistic regression with balanced class weights, and a random forest (200 trees, depth 8) for comparison. The baseline is the Week 4 rule.</p>
-<p><b>Validation.</b> Grouped cross-validation by <code>client_id</code>, so no client appears in both training and test. Probabilities are out-of-fold. This is the leakage check: a random split would let a client's pages sit on both sides and overstate the score.</p>
-<p><b>Assumptions I chose:</b> the 0.7 threshold, the archetype cut-offs, and 2 editor-hours per page.</p>
+Exclusion: pages with fewer than 50 impressions in the previous 30 days were dropped, because a ratio on a tiny base is noisy.
+Result: 20,249 pages from 30 clients. The observed decline rate is 0.521.
+Public safety: clients and pages appear only as anonymized IDs, and none are shown here.
+3. Methodology
+Label. declined = 1 when impressions_last_30d / impressions_prev_30d < 0.7. This is an observed drop over one window, not the effect of any action.
 
-<h2>4. Results</h2>
-<p>All numbers are AUC on held-out clients. Higher is better, and 0.5 is chance.</p>
-<figure>
-<div class="row"><span>Week 4 rule (baseline)</span><div class="bar" style="width:168px;background:var(--bar2)"></div><b>0.420</b></div>
-<div class="row"><span>Logistic regression</span><div class="bar" style="width:233px"></div><b>0.583</b></div>
-<div class="row"><span>Random forest</span><div class="bar" style="width:234px"></div><b>0.585</b></div>
-<figcaption>Mean AUC over 10 grouped splits (Week 6 validation). Logistic ranged from 0.455 to 0.876 across splits. In this notebook's 5-fold grouped run, the logistic out-of-fold AUC was 0.611; the difference comes from the different splits.</figcaption>
-</figure>
-<p>The signal appears to rest on one feature: without content age, the AUC falls to 0.475, below chance.</p>
+Features. Numeric: days since last update, content age (days), word count, search volume, competition, CPC (median-imputed, standardized). Categorical: content type, main intent (most-frequent imputation, one-hot). Word count is missing for 29.5% of pages. Left out on purpose: the trend fields (trend_pct, trend_direction), because the label comes from them, and client_id, which is used only for grouping, never as a feature.
 
-<figure>
-<svg viewBox="0 0 420 215" role="img" aria-label="Decline rate by content age bucket">
-<line x1="30" y1="170" x2="410" y2="170" stroke="currentColor" opacity=".4"/>
-<rect x="45" y="51" width="50" height="119" fill="var(--bar)"/><text x="52" y="45">0.594</text>
-<rect x="115" y="32" width="50" height="138" fill="var(--bar)"/><text x="122" y="26">0.691</text>
-<rect x="185" y="58" width="50" height="112" fill="var(--bar)"/><text x="192" y="52">0.562</text>
-<rect x="255" y="81" width="50" height="89" fill="var(--bar)"/><text x="262" y="75">0.446</text>
-<rect x="325" y="108" width="50" height="62" fill="var(--bar)"/><text x="332" y="102">0.308</text>
-<line x1="30" y1="66" x2="410" y2="66" stroke="currentColor" stroke-dasharray="4 4" opacity=".6"/><text x="332" y="62">overall 0.521</text>
-<text x="48" y="190">youngest</text><text x="330" y="190">oldest</text>
-<text x="130" y="208">content-age quintile (about 90 to 564 days)</text>
-</svg>
-<figcaption>Observed share of pages that declined, by content-age bucket. Older pages declined less often in this sample. Decline by days since last update showed no steady pattern.</figcaption>
-</figure>
+Models. Logistic regression with balanced class weights, and a random forest (200 trees, depth 8) for comparison. The baseline is the Week 4 rule.
 
-<p><b>Does the top of the queue beat the base rate?</b> Only partly.</p>
-<div class="wrap"><table>
-<tr><th>Top N reviewed</th><th>Decline rate in top N</th><th>Eligible base rate</th></tr>
-<tr><td>50</td><td>0.540</td><td>0.538</td></tr>
-<tr><td>100</td><td>0.660</td><td>0.538</td></tr>
-<tr><td>200</td><td>0.665</td><td>0.538</td></tr>
-<tr><td>500</td><td>0.574</td><td>0.538</td></tr>
-</table></div>
-<p>Lift is concentrated in the top 100 to 200 picks. It is absent at the top 50 and fades at 500. These samples are small, and the top five clients hold about 79% of the top-200 picks.</p>
+Validation. Grouped cross-validation by client_id, so no client appears in both training and test. Probabilities are out-of-fold. This is the leakage check: a random split would let a client's pages sit on both sides and overstate the score.
 
-<h2>5. Limitations and honest framing</h2>
-<ul>
-<li>Signal strength is weak and unstable across splits (AUC 0.455 to 0.876).</li>
-<li>The label is an observed drop over one window. Nothing here shows that a refresh would recover traffic, and the score is not a cause.</li>
-<li>Only 30 clients. Results may not transfer to a new client without re-validating on held-out clients.</li>
-<li>No seasonality handling, no time-based validation, no future-window check.</li>
-<li>Thresholds, archetype cut-offs and editor-hours are my assumptions.</li>
-<li>Word count is median-imputed for 29.5% of pages, so its effect is weakly measured.</li>
-<li>"Impressions lost in the picks" is an observed drop, not recoverable upside.</li>
-</ul>
+Assumptions I chose: the 0.7 threshold, the archetype cut-offs, and 2 editor-hours per page.
 
-<h2>6. Ranked recommendations: the action playbook</h2>
-<p>Pages are ranked by modeled decline risk. Conditions apply in order, and the first match sets the reason code. <b>An editor reads every REVIEW page before any change.</b> The queue is a reading list, not an instruction.</p>
-<div class="wrap"><table>
-<tr><th>Reason code</th><th>Rule</th><th>Action</th><th>Pages</th><th>Basis</th></tr>
-<tr><td>LOW_VISIBILITY</td><td>Bottom quarter of impressions</td><td>No action</td><td>5,061</td><td>Editor time is better spent elsewhere</td></tr>
-<tr><td>LOW_CTR_FOR_POSITION</td><td>Top-10 position, CTR in bottom quarter for its position</td><td>Review title and snippet</td><td>1,415</td><td>Position vs CTR check, Week 4</td></tr>
-<tr><td>HIGH_DECLINE_RISK</td><td>Top 20% of modeled risk</td><td>Review for refresh</td><td>2,622</td><td>Grouped-validated, directional only</td></tr>
-<tr><td>STRIKING_DISTANCE</td><td>Average position 11 to 20</td><td>Review for content gaps</td><td>3,258</td><td>Rule of thumb, not validated</td></tr>
-<tr><td>STABLE</td><td>Everything else</td><td>Monitor</td><td>7,893</td><td>None</td></tr>
-</table></div>
-<p><b>Do not automate:</b> publishing, rewriting or deleting pages, or changing titles and redirects from a score; promising a client that a refresh will recover traffic; ranking editors or clients with these scores; or applying the queue to a new client without re-validation.</p>
-<p><b>Retrain triggers:</b> decline base rate moves more than 10 points; grouped AUC falls below 0.55; top-N is not above the base rate; feature missing rates rise more than 10 points; new clients appear.</p>
+4. Results
+All numbers are AUC on held-out clients. Higher is better, and 0.5 is chance.
 
-<h2>7. Reproducibility</h2>
-<ul>
-<li>Repository: <a href="https://github.com/tabeeljohn2/flyrank-ml-internship">github.com/tabeeljohn2/flyrank-ml-internship</a></li>
-<li>Notebooks in <code>work/notebooks/</code>: <a href="https://github.com/tabeeljohn2/flyrank-ml-internship/blob/main/work/notebooks/capstone.ipynb">capstone</a> (<a href="https://colab.research.google.com/github/tabeeljohn2/flyrank-ml-internship/blob/main/work/notebooks/capstone.ipynb">open in Colab</a>) and <a href="https://github.com/tabeeljohn2/flyrank-ml-internship/blob/main/work/notebooks/w07_action_playbook.ipynb">action playbook</a> (<a href="https://colab.research.google.com/github/tabeeljohn2/flyrank-ml-internship/blob/main/work/notebooks/w07_action_playbook.ipynb">open in Colab</a>)</li>
-<li>Outputs: <code>work/outputs/</code> (queue CSV and metrics JSON); figure in <code>work/figures/</code></li>
-<li>Run in Google Colab with scikit-learn, pandas and numpy. Grouped validation uses <code>GroupKFold</code> (5 folds in the playbook notebook). The random forest uses seed 42. To rerun, open the notebook in Colab and choose Runtime, then Run all; it clones the repo and reads the bundled CSV.</li>
-</ul>
+Week 4 rule (baseline)
+0.420
+Logistic regression
+0.583
+Random forest
+0.585
+Mean AUC over 10 grouped splits (Week 6 validation). Logistic ranged from 0.455 to 0.876 across splits. In this notebook's 5-fold grouped run, the logistic out-of-fold AUC was 0.611; the difference comes from the different splits.
+The signal appears to rest on one feature: without content age, the AUC falls to 0.475, below chance.
 
-<h2>8. Acknowledgments and data credit</h2>
-<p>Built on the <a href="https://flyrank.ai">FlyRank ML Internship dataset</a>. Thanks to the FlyRank team and mentors for the data, the weekly sessions and the feedback.</p>
+0.594
+0.691
+0.562
+0.446
+0.308
+overall 0.521
+youngest
+oldest
+content-age quintile (about 90 to 564 days)
+Observed share of pages that declined, by content-age bucket. Older pages declined less often in this sample. Decline by days since last update showed no steady pattern.
+Does the top of the queue beat the base rate? Only partly.
 
-<footer>Research prototype for decision support. Not a production system. All claims are observed or directional.</footer>
-</main>
-</body>
-</html>
+Top N reviewed	Decline rate in top N	Eligible base rate
+50	0.540	0.538
+100	0.660	0.538
+200	0.665	0.538
+500	0.574	0.538
+Lift is concentrated in the top 100 to 200 picks. It is absent at the top 50 and fades at 500. These samples are small, and the top five clients hold about 79% of the top-200 picks.
+
+5. Limitations and honest framing
+Signal strength is weak and unstable across splits (AUC 0.455 to 0.876).
+The label is an observed drop over one window. Nothing here shows that a refresh would recover traffic, and the score is not a cause.
+Only 30 clients. Results may not transfer to a new client without re-validating on held-out clients.
+No seasonality handling, no time-based validation, no future-window check.
+Thresholds, archetype cut-offs and editor-hours are my assumptions.
+Word count is median-imputed for 29.5% of pages, so its effect is weakly measured.
+"Impressions lost in the picks" is an observed drop, not recoverable upside.
+6. Ranked recommendations: the action playbook
+Pages are ranked by modeled decline risk. Conditions apply in order, and the first match sets the reason code. An editor reads every REVIEW page before any change. The queue is a reading list, not an instruction.
+
+Reason code	Rule	Action	Pages	Basis
+LOW_VISIBILITY	Bottom quarter of impressions	No action	5,061	Editor time is better spent elsewhere
+LOW_CTR_FOR_POSITION	Top-10 position, CTR in bottom quarter for its position	Review title and snippet	1,415	Position vs CTR check, Week 4
+HIGH_DECLINE_RISK	Top 20% of modeled risk	Review for refresh	2,622	Grouped-validated, directional only
+STRIKING_DISTANCE	Average position 11 to 20	Review for content gaps	3,258	Rule of thumb, not validated
+STABLE	Everything else	Monitor	7,893	None
+Do not automate: publishing, rewriting or deleting pages, or changing titles and redirects from a score; promising a client that a refresh will recover traffic; ranking editors or clients with these scores; or applying the queue to a new client without re-validation.
+
+Retrain triggers: decline base rate moves more than 10 points; grouped AUC falls below 0.55; top-N is not above the base rate; feature missing rates rise more than 10 points; new clients appear.
+
+7. Reproducibility
+Repository: github.com/tabeeljohn2/flyrank-ml-internship
+Notebooks in work/notebooks/: capstone (open in Colab) and action playbook (open in Colab)
+Outputs: work/outputs/ (queue CSV and metrics JSON); figure in work/figures/
+Run in Google Colab with scikit-learn, pandas and numpy. Grouped validation uses GroupKFold (5 folds in the playbook notebook). The random forest uses seed 42. To rerun, open the notebook in Colab and choose Runtime, then Run all; it clones the repo and reads the bundled CSV.
+8. Acknowledgments and data credit
+Built on the FlyRank ML Internship dataset. Thanks to the FlyRank team and mentors for the data, the weekly sessions and the feedback.
+
+Research prototype for decision support. Not a production system. All claims are observed or directional.
